@@ -189,14 +189,15 @@ server <- function(input, output) {
             filter(UserType %in% input$user_filter) %>%
             filter(Date >= (Sys.Date()-31) & Date <= (Sys.Date()-1)) %>%  # default 30 day trend
             group_by_("Date", input$breakdown) %>% 
-            summarise_if(is.numeric, sum)
+            summarise_if(is.numeric, sum) %>% 
+            ungroup()
         })
 
     # untrend channel data for full time frame plots
-    untrended_channel_data <- reactive({
+    untrended_data <- reactive({
         ecom_channel() %>%
-        select(-date) %>%
-        group_by(input$breakdown) %>%
+        select(-Date) %>%
+        group_by_(input$breakdown) %>%
         summarise_at(vars(DailyUsers, Sessions, Transactions, Revenue), sum)
     })
     

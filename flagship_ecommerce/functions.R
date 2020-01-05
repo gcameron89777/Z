@@ -2,18 +2,16 @@
 # downloadable tables on channel analysis tab
 metricTables <- function(df, dim, metric) {
   
-  dim <- enquo(dim)
+  dim <- rlang::sym(dim)
   metric <- enquo(metric)
   
-  
   df %>% mutate(date = ordered(
-    format(date, "%d-%b"),
-    levels = format(sort(unique(date)), "%d-%b")
-  )) %>% 
-    group_by(date, !! dim) %>% 
+    format(Date, "%d-%b"),
+    levels = format(sort(unique(Date)), "%d-%b"))) %>% 
+    group_by(Date, !! dim) %>%
     summarise(!! rlang::as_name(metric) := sum(!! metric))  %>%
-    pivot_longer(cols = -c(date, !!dim), names_to = 'Key', values_to = 'value') %>%
-    pivot_wider(names_from = date, values_from = value) %>%
+    pivot_longer(cols = -c(Date, !! dim), names_to = 'Key', values_to = 'value') %>%
+    pivot_wider(names_from = Date, values_from = value) %>%
     select(-Key) %>% 
     replace(is.na(.), 0) 
 }

@@ -61,7 +61,7 @@ output$ConversionRateBox <- renderInfoBox({
 
 ##  Timeline Plot
 output$timeline <- renderPlot({
-  ggplot(ecom_channel(), aes_string(x = "Date", y = input$kpi_overlay)) +
+  ggplot(ecom_channel(), aes(x = Date, y = !! rlang::sym(input$kpi_overlay))) +
     geom_area(aes_string(fill = input$breakdown), alpha = 0.3) +
     stat_summary(fun.y = sum, geom = 'line', size = 1, alpha = 0.5) +
     theme(axis.text.x = element_text(angle=90, hjust=1),
@@ -76,56 +76,62 @@ output$timeline <- renderPlot({
 
 ## Plots
 # revenue plot
-# output$revenue_channel <- renderPlot({
-#   ggplot(untrended_channel_data, aes(x = reorder(Channel, Revenue), y = Revenue), label = Revenue) +
-#     geom_bar(stat="identity", fill = "#008080", alpha = 0.6) +
-#     coord_flip() +
-#     geom_text(aes(label = paste0("$", format(Revenue, big.mark = ","))), color = "white", hjust= 1.2) +
-#     scale_y_continuous(labels = function(l) {paste0("$", format(l, big.mark = ","))}) +
-#     xlab("")
-# }, height = 300)
+output$revenue_channel <- renderPlot({
+  ggplot(untrended_data(), aes(x = reorder(!! rlang::sym(input$breakdown), Revenue), y = Revenue), label = Revenue) +
+    geom_bar(stat="identity", fill = "#008080", alpha = 0.6) +
+    coord_flip() +
+    geom_text(aes(label = scales::dollar(Revenue)), hjust= 1.2, color = "white") +
+    scale_y_continuous(label = scales::label_dollar(scale = 0.001, suffix = "K")) +
+    xlab("") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}, height = 300)
 
 # transactions plot
-# output$transactions_channel <- renderPlot({
-#   ggplot(untrended_channel_data, aes(x = reorder(Channel, Transactions), y = Transactions), label = Transactions) +
-#     geom_bar(stat="identity", fill = "#008080", alpha = 0.6) +
-#     coord_flip() +
-#     geom_text(aes(label = format(Transactions, big.mark = ",")), color = "white", hjust= 1.2) +
-#     xlab("")
-# }, height = 300)
+output$transactions_channel <- renderPlot({
+  ggplot(untrended_data(), aes(x = reorder(!! rlang::sym(input$breakdown), Transactions), y = Transactions), label = Transactions) +
+    geom_bar(stat="identity", fill = "#008080", alpha = 0.6) +
+    coord_flip() +
+    geom_text(aes(label = scales::comma(Transactions, big.mark = ",")), color = "white", hjust= 1.2) +
+    scale_y_continuous(label = scales::comma) +
+    xlab("") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}, height = 300)
 
 # conversion rate plot
-# output$cr_channel <- renderPlot({
-#   ggplot(untrended_channel_data, aes(x = reorder(Channel, Transactions / Sessions), y = Transactions / Sessions), label = Transactions / Sessions) +
-#     geom_bar(stat="identity", fill = "#008080", alpha = 0.6) +
-#     coord_flip() +
-#     geom_text(aes(label = paste0(formatC(Transactions / Sessions * 100, format = "f", digits = 1), "%")), color = "white", hjust= 1.2) +
-#     scale_y_continuous(labels = function(l) {paste0(formatC(l * 100, format = "f", digits = 1), "%")}) +
-#     xlab("")
-# }, height = 300)
+output$cr_channel <- renderPlot({
+  ggplot(untrended_data(), aes(x = reorder(!! rlang::sym(input$breakdown), Transactions / Sessions), y = Transactions / Sessions), label = Transactions / Sessions) +
+    geom_bar(stat="identity", fill = "#008080", alpha = 0.6) +
+    coord_flip() +
+    geom_text(aes(label = scales::percent((Transactions / Sessions), accuracy = 0.01)), color = "white", hjust= 1.2) +
+    scale_y_continuous(label = scales::label_percent()) +
+    xlab("") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}, height = 300)
 
 
 ## Summary KPI tables
 # sessions table
-# sessions_table <- metricTables(ecom_channel(), Channel, Sessions)
-# output$sessions_table <- DT::renderDataTable(DT::datatable({
-#   sessions_table
-# }, options = list(dom = 't', bPaginate = FALSE, sScrollX = "100%"))
-# )
-# output$downloadSessions <- downloadTable("sessions", sessions_table)
+sessions_table <- reactive({metricTables(ecom_channel(), input$breakdown, Sessions)})
+output$sessions_table <- DT::renderDataTable(DT::datatable({
+  sessions_table()
+}, options = list(dom = 't', bPaginate = FALSE, sScrollX = "100%"))
+)
+output$downloadSessions <- downloadTable("Sessions", sessions_table())
+
 
 # transactions table
-# transactions_table <- metricTables(ecom_channel, Channel, Transactions)
-# output$transactions_table <- DT::renderDataTable(DT::datatable({
-#   transactions_table
-# }, options = list(dom = 't', bPaginate=FALSE, sScrollX="100%"))
-# )
-# output$downloadTransactions <- downloadTable("transactions", transactions_table)
+transactions_table <- reactive({metricTables(ecom_channel(), input$breakdown, Transactions)})
+output$transactions_table <- DT::renderDataTable(DT::datatable({
+  transactions_table()
+}, options = list(dom = 't', bPaginate=FALSE, sScrollX="100%"))
+)
+output$downloadTransactions <- downloadTable("Transactions", transactions_table())
 
 # revenue table
-# revenue_table <- metricTables(ecom_channel(), Channel, Revenue) %>% mutate_at(vars(-Channel), scales::dollar)
-# output$revenue_table <- DT::renderDataTable(DT::datatable({
-#   revenue_table},
-#   options = list(dom = 't', bPaginate=FALSE, sScrollX="100%"))
-# )
-# output$downloadRevenue <- downloadTable("revenue", revenue_table)
+revenue_table <- reactive({metricTables(ecom_channel(), input$breakdown, Revenue) %>% mutate_at(vars(- !! rlang::sym(input$breakdown)), scales::dollar)})
+output$revenue_table <- DT::renderDataTable(DT::datatable({
+  revenue_table()
+  },
+  options = list(dom = 't', bPaginate=FALSE, sScrollX="100%"))
+)
+output$downloadRevenue <- downloadTable("Revenue", revenue_table())
