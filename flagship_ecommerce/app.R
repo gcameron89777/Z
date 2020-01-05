@@ -5,11 +5,11 @@ library(odbc)
 library(shiny)
 library(shinydashboard)
 library(shinyjs)
+library(shinyWidgets)
 library(lubridate)
 library(DT)
 library(scales)
 library(plogr)
-source("queries.R")
 source("functions.R")
 
 
@@ -28,7 +28,19 @@ ui <- dashboardPage(skin = "black",
                         ),
                         tabItems(
                             tabItem(tabName = "channel",
+                                    
+                                    # filters
+                                    fluidRow(
+                                        box(#width = 12,
+                                        uiOutput("channel_filter"),
+                                        uiOutput("device_filter"),
+                                        uiOutput("user_filter")
+                                        )
+                                    ),
+                                    
                                     h2("Channel Analysis"),
+                                    
+                                    # info boxes
                                     fluidRow(
                                         # A icons available here: http://fontawesome.io/icons/
                                         infoBoxOutput("SessionsBox", width = 3),
@@ -36,16 +48,28 @@ ui <- dashboardPage(skin = "black",
                                         infoBoxOutput("RevenueBox", width = 3),
                                         infoBoxOutput("ConversionRateBox", width = 3)
                                     ),
+                                    
+                                    # timeline metric selector
                                     fluidRow(
                                         box(width = 12,
                                             box(width = 2,
+                                                
+                                                # metric selections
                                                 radioButtons(
                                                     inputId = "kpi_overlay",
                                                     "Overlay:",
                                                     c("Sessions",
                                                       "Transactions",
-                                                      "Revenue"))
+                                                      "Revenue")),
+                                                
+                                                # breakdown by selection
+                                                selectInput(inputId = "breakdown", 
+                                                            label =  "Breakdown", 
+                                                            choices = c("Channel", "UserType", "Device"),
+                                                            selected = c("Channel"), 
+                                                            multiple = F) # There can be only one
                                             ),
+                                            
                                             # primary visual timeline
                                             box(width = 10,
                                                 title = "Timeline", 
@@ -53,6 +77,9 @@ ui <- dashboardPage(skin = "black",
                                             )
                                         )
                                     ),
+                                    
+                                    
+                                    # bottom plots
                                     fluidRow(
                                         box(width = 4,
                                             #height = 375,
@@ -138,34 +165,42 @@ server <- function(input, output) {
     addClass(selector = "body", class = "sidebar-collapse")
     
     # connection, data and data prep
+    ## session data
     con <- dbConnect(odbc(), "PostgreSQL ANSI")
-    #session_data <- dbGetQuery(con, sessions_trend_query)
-    #saveRDS(session_data, "session_data.rds")
-    session_data <- readRDS("session_data.rds")
     
-    # ecom_funnel <- con %>% 
-    #     tbl(in_schema("flagship_reporting", "ecom_funnel")) %>% 
-    #     select(-users) %>% 
-    #     collect() %>% 
-    #     mutate_at(vars(sessions, daily_users, bounces, transactions, revenue), as.numeric) %>% 
-    #     mutate(revenue = round(revenue, 2))
-    
-    dat.trended <- session_data %>%
-        filter(date >= (Sys.Date()-31) & date <= (Sys.Date()-1)) %>% # default 30 day trend
-        select(date, channel_grouping, daily_users, sessions, transactions, revenue) %>%
-        group_by(date, channel_grouping) %>%
-        summarise(DailyUsers = sum(daily_users), Sessions = sum(sessions), Transactions = sum(transactions), Revenue = sum(revenue)) %>% 
-        rename(Channel = channel_grouping) %>% 
-        mutate_at(vars(DailyUsers, Sessions, Transactions), as.numeric) %>% 
+    ecom_channel_raw <- con %>% 
+        tbl(in_schema("flagship_reporting", "ecom_channel")) %>% 
+        collect() %>% 
+        select(date, channel_grouping, device_category, user_type, daily_users, sessions, transactions, revenue) %>%
+        group_by(date, channel_grouping, device_category, user_type) %>%
+        summarise(DailyUsers = sum(daily_users), Sessions = sum(sessions), Transactions = sum(transactions), Revenue = sum(revenue)) %>%
+        rename(Channel = channel_grouping,
+               Device = device_category,
+               UserType = user_type,
+               Date = date) %>%
+        mutate_at(vars(DailyUsers, Sessions, Transactions), as.numeric) %>%
         ungroup()
-
     
-    # last 30 days data as a whle, not split by date
-    last_30days_data <- dat.trended %>% 
-        filter(date >= (Sys.Date()-31) & date <= (Sys.Date()-1)) %>% # default 30 day trend
-        select(-date) %>% 
-        group_by(Channel) %>% 
+    
+    ecom_channel <- reactive({
+        ecom_channel_raw %>%
+            filter(Channel %in% input$channel_filter) %>%
+            filter(Device %in% input$device_filter) %>%
+            filter(UserType %in% input$user_filter) %>%
+            filter(Date >= (Sys.Date()-31) & Date <= (Sys.Date()-1)) %>%  # default 30 day trend
+            group_by_("Date", input$breakdown) %>% 
+            summarise_if(is.numeric, sum)
+        })
+
+    # untrend channel data for full time frame plots
+    untrended_channel_data <- reactive({
+        ecom_channel() %>%
+        select(-date) %>%
+        group_by(input$breakdown) %>%
         summarise_at(vars(DailyUsers, Sessions, Transactions, Revenue), sum)
+    })
+    
+    
     
     # channel analysis tab
     source('channel_analysis_tab.R', local = T)
