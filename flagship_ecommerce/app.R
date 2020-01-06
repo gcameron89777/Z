@@ -24,17 +24,21 @@ ui <- dashboardPage(skin = "black",
                     ),
                     dashboardBody(
                         tags$head(
-                            tags$link(rel = "stylesheet", type = "text/css", href = "ecomstyles.css")
+                            tags$link(rel = "stylesheet", type = "text/css", href = "ecomstyles.css"),
+                            
+                            fluidRow(
+                                
+                            ),
                         ),
                         tabItems(
                             tabItem(tabName = "channel",
                                     
                                     # filters
                                     fluidRow(
-                                        box(#width = 12,
-                                        uiOutput("channel_filter"),
-                                        uiOutput("device_filter"),
-                                        uiOutput("user_filter")
+                                        box(
+                                            uiOutput("channel_filter"),
+                                            uiOutput("device_filter"),
+                                            uiOutput("user_filter")
                                         )
                                     ),
                                     
@@ -137,25 +141,33 @@ ui <- dashboardPage(skin = "black",
                             tabItem(tabName = "funnel",
                                     h2("Funnel Analysis (Last Month)"),
                                     fluidRow(
+                                        
+                                        # Filters
                                         box(width = 3,
                                             title = "Filters",
-                                            selectInput("channel",
-                                                        "Channel", 
-                                                        c("All", "Facebook", "Youtube", "SEM", "Organic", "Direct", "Email"), selected = "All"),
+                                            uiOutput("fun_channel_filter"),
+                                            uiOutput("fun_device_filter"),
+                                            uiOutput("fun_user_filter"),
+                                            uiOutput("fun_zero_filter"),
+                                            uiOutput("fun_elabel_filter"),
                                             
-                                            selectInput("promo",
-                                                        "Promo Offer (Only valid after registration step)", 
-                                                        c( "All Transactions", "None", "Partner Offer", "Print Code", "Affiliate Promo"), selected = "All Transactions")
-                                            
+                                            # metrics
+                                            # metric selections
+                                            radioButtons(
+                                                inputId = "funnel_metrics",
+                                                "Metric:",
+                                                c("Sessions",
+                                                  "DailyUsers"))
                                         ),
                                         box(width = 9,
                                             title = "Funnel",
-                                            plotOutput("funnel_plot"))
+                                            plotOutput("funnel_plot")
+                                            )
+                                        )
                                     )
                             )
                         )
                     )
-)
 
 ### SERVER ###
 
@@ -184,10 +196,10 @@ server <- function(input, output) {
     
     ecom_channel <- reactive({
         ecom_channel_raw %>%
+            filter(Date >= (Sys.Date()-31) & Date <= (Sys.Date()-1)) %>%  # default 30 day trend
             filter(Channel %in% input$channel_filter) %>%
             filter(Device %in% input$device_filter) %>%
             filter(UserType %in% input$user_filter) %>%
-            filter(Date >= (Sys.Date()-31) & Date <= (Sys.Date()-1)) %>%  # default 30 day trend
             group_by_("Date", input$breakdown) %>% 
             summarise_if(is.numeric, sum) %>% 
             ungroup()
@@ -202,9 +214,41 @@ server <- function(input, output) {
     })
     
     
+    ## funnel data
+    funnel_data_raw <- con %>% 
+        tbl(in_schema("flagship_reporting", "ecom_funnel")) %>% 
+        collect() %>% 
+        mutate_at(vars(sessions, daily_users), as.numeric) %>% 
+        mutate(zero_val_product = as.character(zero_val_product)) %>% 
+        rename(Date = date,
+               Channel = channel_grouping,
+               Device = device_category,
+               UserType = user_type,
+               EventAction = event_action,
+               EventLabel = event_label,
+               ZeroValProduct = zero_val_product,
+               Sessions = sessions,
+               DailyUsers = daily_users)
+        
+    # funnel data reactive
+    funnel_data <- reactive({
+        funnel_data_raw %>% 
+            filter(Date >= (Sys.Date()-31) & Date <= (Sys.Date()-1)) %>%  # default 30 day trend
+            filter(Channel %in% input$fun_channel_filter) %>% 
+            filter(Device %in% input$fun_device_filter) %>% 
+            filter(UserType %in% input$fun_user_filter) %>% 
+            filter(ZeroValProduct %in% input$fun_zero_filter) %>% 
+            filter(EventLabel %in% input$fun_elabel_filter) %>% 
+            group_by(EventAction) %>% 
+            summarise_at(vars(Sessions, DailyUsers), sum) %>% 
+            ungroup()
+    })
     
     # channel analysis tab
     source('channel_analysis_tab.R', local = T)
+    
+    # funnel analysis tab
+    source('funnel_analysis_tab.R', local = T)
     
     
     ## Ecommerce Funnel Tab
