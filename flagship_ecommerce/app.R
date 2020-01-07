@@ -35,10 +35,17 @@ ui <- dashboardPage(skin = "black",
                                     
                                     # filters
                                     fluidRow(
-                                        box(
+                                        box(width = 3,
+                                            title = NULL,
                                             uiOutput("channel_filter"),
-                                            uiOutput("device_filter"),
-                                            uiOutput("user_filter")
+                                            uiOutput("device_filter")
+                                        ),
+                                        box(width = 3,
+                                            title = NULL,
+                                            uiOutput("user_filter"),
+                                            dateRangeInput("input_date", "Date Range", start = (Sys.Date()-31), end = (Sys.Date()-1), min = as.Date("2019-11-12"),
+                                                           max = (Sys.Date()-1), format = "yyyy-mm-dd", startview = "month", weekstart = 0,
+                                                           language = "en", separator = " to ", width = NULL)
                                         )
                                     ),
                                     
@@ -139,12 +146,17 @@ ui <- dashboardPage(skin = "black",
                             ),
                             
                             tabItem(tabName = "funnel",
-                                    h2("Funnel Analysis (Last Month)"),
+                                    h2("Funnel Analysis"),
                                     fluidRow(
                                         
                                         # Filters
                                         box(width = 3,
                                             title = "Filters",
+                                            
+                                            # min date for funnel is 12/28/19 since only added custom metric for zero priced products on the 27th
+                                            dateRangeInput("fun_input_date", "Date Range", start = (Sys.Date()-31), end = (Sys.Date()-1), min = as.Date("2019-11-12"),
+                                                           max = (Sys.Date()-1), format = "yyyy-mm-dd", startview = "month", weekstart = 0,
+                                                           language = "en", separator = " to ", width = NULL),
                                             uiOutput("fun_channel_filter"),
                                             uiOutput("fun_device_filter"),
                                             uiOutput("fun_user_filter"),
@@ -196,7 +208,7 @@ server <- function(input, output) {
     
     ecom_channel <- reactive({
         ecom_channel_raw %>%
-            filter(Date >= (Sys.Date()-31) & Date <= (Sys.Date()-1)) %>%  # default 30 day trend
+            filter(Date >= input$input_date[1] & Date <= input$input_date[2]) %>% 
             filter(Channel %in% input$channel_filter) %>%
             filter(Device %in% input$device_filter) %>%
             filter(UserType %in% input$user_filter) %>%
@@ -219,7 +231,8 @@ server <- function(input, output) {
         tbl(in_schema("flagship_reporting", "ecom_funnel")) %>% 
         collect() %>% 
         mutate_at(vars(sessions, daily_users), as.numeric) %>% 
-        mutate(zero_val_product = as.character(zero_val_product)) %>% 
+        mutate(zero_val_product = as.character(zero_val_product)) %>%
+        mutate(zero_val_product = if_else(zero_val_product == 1, T, F)) %>%
         rename(Date = date,
                Channel = channel_grouping,
                Device = device_category,
@@ -233,7 +246,7 @@ server <- function(input, output) {
     # funnel data reactive
     funnel_data <- reactive({
         funnel_data_raw %>% 
-            filter(Date >= (Sys.Date()-31) & Date <= (Sys.Date()-1)) %>%  # default 30 day trend
+            filter(Date >= input$fun_input_date[1] & Date <= input$fun_input_date[2]) %>% 
             filter(Channel %in% input$fun_channel_filter) %>% 
             filter(Device %in% input$fun_device_filter) %>% 
             filter(UserType %in% input$fun_user_filter) %>% 
