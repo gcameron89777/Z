@@ -47,6 +47,17 @@ output$fun_zero_filter <- renderUI({
         )
 })
 
+output$contains_download_filter <- renderUI({
+        dl_options <- unique(funnel_data_raw$ContainsDownload) %>% sort()
+        pickerInput(inputId = "contains_download_filter",
+                    label = "ContainsDownload",
+                    choices = dl_options,
+                    selected = dl_options,
+                    multiple = T,
+                    options = list(`actions-box` = T)
+        )
+})
+
 output$fun_elabel_filter <- renderUI({
         elabel_options <- unique(funnel_data_raw$EventLabel) %>% sort()
         pickerInput(inputId = "fun_elabel_filter",

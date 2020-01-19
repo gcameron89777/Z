@@ -160,7 +160,8 @@ ui <- dashboardPage(skin = "black",
                                             uiOutput("fun_channel_filter"),
                                             uiOutput("fun_device_filter"),
                                             uiOutput("fun_user_filter"),
-                                            uiOutput("fun_zero_filter"),
+                                            uiOutput("fun_zero_filter"), 
+                                            uiOutput("contains_download_filter"),
                                             uiOutput("fun_elabel_filter"),
                                             
                                             # metrics
@@ -193,7 +194,7 @@ server <- function(input, output) {
     con <- dbConnect(odbc(), "PostgreSQL ANSI")
     
     ecom_channel_raw <- con %>% 
-        tbl(in_schema("flagship_reporting", "ecom_channel")) %>% 
+        tbl(in_schema("flagship_reporting", "ecom_dashboard")) %>% 
         collect() %>% 
         select(date, channel_grouping, device_category, user_type, daily_users, sessions, transactions, revenue) %>%
         group_by(date, channel_grouping, device_category, user_type) %>%
@@ -228,11 +229,13 @@ server <- function(input, output) {
     
     ## funnel data
     funnel_data_raw <- con %>% 
-        tbl(in_schema("flagship_reporting", "ecom_funnel")) %>% 
+        tbl(in_schema("flagship_reporting", "funnel_dashboard")) %>% 
         collect() %>% 
+        filter(event_action != "removefromcart") %>% # not useful in viewing the funnel
         mutate_at(vars(sessions, daily_users), as.numeric) %>% 
         mutate(zero_val_product = as.character(zero_val_product)) %>%
         mutate(zero_val_product = if_else(zero_val_product == 1, T, F)) %>%
+        mutate(download = if_else(download == 1, T, F)) %>%
         rename(Date = date,
                Channel = channel_grouping,
                Device = device_category,
@@ -240,6 +243,7 @@ server <- function(input, output) {
                EventAction = event_action,
                EventLabel = event_label,
                ZeroValProduct = zero_val_product,
+               ContainsDownload = download,
                Sessions = sessions,
                DailyUsers = daily_users)
         
@@ -251,6 +255,7 @@ server <- function(input, output) {
             filter(Device %in% input$fun_device_filter) %>% 
             filter(UserType %in% input$fun_user_filter) %>% 
             filter(ZeroValProduct %in% input$fun_zero_filter) %>% 
+            filter(ContainsDownload %in% input$contains_download_filter) %>% 
             filter(EventLabel %in% input$fun_elabel_filter) %>% 
             group_by(EventAction) %>% 
             summarise_at(vars(Sessions, DailyUsers), sum) %>% 
@@ -262,60 +267,6 @@ server <- function(input, output) {
     
     # funnel analysis tab
     source('funnel_analysis_tab.R', local = T)
-    
-    
-    ## Ecommerce Funnel Tab
-    
-    # make funnel df
-    # lastmonth_funnel <- filter(dataset, Month == last_month) %>% select(Channel:Transactions) %>%
-    #     mutate(Checkout = ceiling(Transactions * (1 + abs(randwalk(0.2, n = 6, mean = 0, sd = 0))))) %>%
-    #     mutate(ShippingDetails = ceiling(Checkout * (1 + abs(randwalk(0.6, n = 6, mean = 0, sd = 0))))) %>%
-    #     mutate(Registrations = ceiling(ShippingDetails * (2 + abs(randwalk(0.6, n = 6, mean = 0, sd = 0))))) %>%
-    #     mutate(AddToCart = ceiling(Registrations * (2 + abs(randwalk(0.6, n = 6, mean = 0, sd = 0))))) %>%
-    #     select(Channel:Sessions, AddToCart:Checkout, Transactions)
-    
-    # make a reactive version of last months data
-    # create reactive set of data with filters applied by user
-    # filtered_funnel <-  reactive({ lastmonth_funnel %>%
-    #         filter(input$channel == "All" | Channel == input$channel) %>%
-    #         filter(input$promo == "All Transactions" | Promo == input$promo) %>%
-    #         {if(input$promo != "All Transactions") select(., c(Channel, Promo, ShippingDetails, Checkout:Transactions)) else .} %>%
-    #         gather(Funnel, Sessions, -Channel, -Promo) %>%
-    #         group_by(Channel, Promo, Funnel) %>%
-    #         summarise(Sessions = sum(Sessions)) %>%
-    #         gather(key, value, -Channel, -Promo, - Funnel) %>%
-    #         group_by(Funnel) %>%
-    #         summarise(Sum = sum(value)) %>%
-    #         arrange(-Sum) %>%
-    #         mutate(End = lag(Sum),
-    #                xpos = 1:n() - 0.5,
-    #                Diff = End - Sum,
-    #                Percent = paste("-", round(Diff / End * 100, 1), "%"))
-    # })
-    
-    
-    # funnel bar blot
-    # output$funnel_plot <- renderPlot({
-    #     
-    #     ggplot(filtered_funnel(), aes(x = reorder(Funnel, -Sum), y = Sum)) +
-    #         geom_col(alpha = 0.6, fill = "#008080") +
-    #         stat_summary(aes(label = scales::comma(..y..)), fun.y = 'sum',
-    #                      geom = 'text', col = 'white', vjust = 1.5) +
-    #         geom_segment(aes(x = xpos, y = End, xend = xpos, yend = Sum)) +
-    #         geom_text(aes(x = xpos, y =  End - Diff / 2, label = Percent), hjust = -0.2, vjust = -1) +
-    #         theme(axis.title.x = element_blank(),
-    #               axis.title.y = element_blank()) +
-    #         scale_y_continuous(labels = function(l) {l = l / 1000; paste0(l, "K")}) +
-    #         
-    #         # adds dummy bars for negative y axis values to show more green on the labels so not squished
-    #         geom_bar(data = data.frame(x = filtered_funnel()$Funnel, y = -(sum(filtered_funnel()$Sum) * 0.02)), 
-    #                  aes(x, y),
-    #                  stat = "identity", position = "dodge",
-    #                  alpha = 0.6, fill = "#008080") +
-    #         stat_summary(aes(label = scales::comma(..y..)), fun.y = 'sum', 
-    #                      geom = 'text', col = 'white', vjust = 1.5) +
-    #         theme(axis.title.x = element_blank(),
-    #               axis.title.y = element_blank())
     
 }
 
