@@ -10,6 +10,7 @@ library(lubridate)
 library(DT)
 library(scales)
 library(plogr)
+library(forcats)
 source("functions.R")
 
 
@@ -236,6 +237,10 @@ server <- function(input, output) {
         mutate(zero_val_product = as.character(zero_val_product)) %>%
         mutate(zero_val_product = if_else(zero_val_product == 1, T, F)) %>%
         mutate(download = if_else(download == 1, T, F)) %>%
+        mutate(event_action = factor(event_action, 
+                                     levels = c("productdetails", "addtocart", "checkout - shipping address",
+                                                "checkout - shipping method", "checkout - payment", "transaction")
+                                     )) %>%
         rename(Date = date,
                Channel = channel_grouping,
                Device = device_category,

@@ -76,15 +76,19 @@ output$funnel_plot <- renderPlot({
         metric <- rlang::sym(input$funnel_metrics)
         
         plot_data <- funnel_data() %>% 
-                arrange(- !!metric) %>% 
+                #arrange(- !!metric) %>% 
+                arrange(EventAction) %>% 
                 mutate(End = lag(!!metric),
-                       #xpos = 1:n() - 0.5,
                        xpos = row_number() - 0.5,
                        Diff = End - !!metric,
-                       Percent = paste("-", round(Diff / End * 100, 1), "%"))
+                       #sign = ifelse(round(Diff / End * 100, 1) >=0, "+", "-"),
+                       Percent = paste((round(Diff / End * 100, 1) * -1), "%"))
+                       #Percent = paste("-", round(Diff / End * 100, 1), "%"))
         
         # build funnel plot
-        plot_data %>% ggplot(aes(x = reorder(EventAction, -!!metric), y = !!metric)) +
+        plot_data %>% 
+                #ggplot(aes(x = reorder(EventAction, -!!metric), y = !!metric)) +
+                ggplot(aes(x = EventAction, y = !!metric)) +
                 geom_col(alpha = 0.6, fill = "#008080") + # base column chart
                 stat_summary(aes(label = scales::comma(..y..)), fun.y = 'sum', geom = 'text', col = 'white', vjust = 1.5) + # labels on the ends of the bars
                 geom_segment(aes(x = xpos, y = End, xend = xpos, yend = !!metric), na.rm = T) + # creates the solid line showing drop to the right of each bar
