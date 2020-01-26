@@ -33,6 +33,14 @@ output$user_filter <- renderUI({
   )
 })
 
+output$date_range_filter <- renderUI({
+  mindate <- max(ecom_channel_raw$Date) - 30
+  maxdate <- max(ecom_channel_raw$Date)
+  dateRangeInput("input_date", "Date Range", start = mindate, end = maxdate, min = as.Date("2019-11-12"),
+                 max = maxdate, format = "yyyy-mm-dd", startview = "month", weekstart = 0,
+                 language = "en", separator = " to ", width = NULL)
+})
+
 
 ## Info boxes
 output$SessionsBox <- renderInfoBox({

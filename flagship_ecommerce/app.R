@@ -44,9 +44,7 @@ ui <- dashboardPage(skin = "black",
                                         box(width = 3,
                                             title = NULL,
                                             uiOutput("user_filter"),
-                                            dateRangeInput("input_date", "Date Range", start = (Sys.Date()-31), end = (Sys.Date()-1), min = as.Date("2019-11-12"),
-                                                           max = (Sys.Date()-1), format = "yyyy-mm-dd", startview = "month", weekstart = 0,
-                                                           language = "en", separator = " to ", width = NULL)
+                                            uiOutput("date_range_filter")
                                         )
                                     ),
                                     
@@ -155,9 +153,7 @@ ui <- dashboardPage(skin = "black",
                                             title = "Filters",
                                             
                                             # min date for funnel is 12/28/19 since only added custom metric for zero priced products on the 27th
-                                            dateRangeInput("fun_input_date", "Date Range", start = (Sys.Date()-31), end = (Sys.Date()-1), min = as.Date("2019-11-12"),
-                                                           max = (Sys.Date()-1), format = "yyyy-mm-dd", startview = "month", weekstart = 0,
-                                                           language = "en", separator = " to ", width = NULL),
+                                            uiOutput("fun_date_range_filter"),
                                             uiOutput("fun_channel_filter"),
                                             uiOutput("fun_device_filter"),
                                             uiOutput("fun_user_filter"),
@@ -197,6 +193,7 @@ server <- function(input, output) {
     ecom_channel_raw <- con %>% 
         tbl(in_schema("flagship_reporting", "ecom_dashboard")) %>% 
         collect() %>% 
+        filter(device_category != "na") %>% # tiny amount, remove
         select(date, channel_grouping, device_category, user_type, daily_users, sessions, transactions, revenue) %>%
         group_by(date, channel_grouping, device_category, user_type) %>%
         summarise(DailyUsers = sum(daily_users), Sessions = sum(sessions), Transactions = sum(transactions), Revenue = sum(revenue)) %>%
