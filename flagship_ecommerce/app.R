@@ -39,6 +39,7 @@ ui <- dashboardPage(skin = "black",
                                         box(width = 3,
                                             title = NULL,
                                             uiOutput("channel_filter"),
+                                            uiOutput("gallery_filter"),
                                             uiOutput("device_filter")
                                         ),
                                         box(width = 3,
@@ -75,7 +76,7 @@ ui <- dashboardPage(skin = "black",
                                                 # breakdown by selection
                                                 selectInput(inputId = "breakdown", 
                                                             label =  "Breakdown", 
-                                                            choices = c("Channel", "UserType", "Device"),
+                                                            choices = c("Channel", "GalleryInvite", "UserType", "Device"),
                                                             selected = c("Channel"), 
                                                             multiple = F) # There can be only one
                                             ),
@@ -157,7 +158,7 @@ ui <- dashboardPage(skin = "black",
                                             uiOutput("fun_channel_filter"),
                                             uiOutput("fun_device_filter"),
                                             uiOutput("fun_user_filter"),
-                                            uiOutput("fun_zero_filter"), 
+                                            uiOutput("gallery_invite_filter"), 
                                             uiOutput("contains_download_filter"),
                                             uiOutput("fun_elabel_filter"),
                                             
@@ -194,10 +195,12 @@ server <- function(input, output) {
         tbl(in_schema("flagship_reporting", "ecom_dashboard")) %>% 
         collect() %>% 
         filter(device_category != "na") %>% # tiny amount, remove
-        select(date, channel_grouping, device_category, user_type, daily_users, sessions, transactions, revenue) %>%
-        group_by(date, channel_grouping, device_category, user_type) %>%
+        select(date, channel_grouping, gallery_invite, device_category, user_type, 
+               daily_users, sessions, transactions, revenue) %>%
+        group_by(date, channel_grouping, gallery_invite, device_category, user_type) %>%
         summarise(DailyUsers = sum(daily_users), Sessions = sum(sessions), Transactions = sum(transactions), Revenue = sum(revenue)) %>%
         rename(Channel = channel_grouping,
+               GalleryInvite = gallery_invite,
                Device = device_category,
                UserType = user_type,
                Date = date) %>%
@@ -206,9 +209,16 @@ server <- function(input, output) {
     
     
     ecom_channel <- reactive({
+        req(input$input_date)
+        req(input$channel_filter)
+        req(input$gallery_filter)
+        req(input$device_filter)
+        req(input$user_filter)
+        req(input$breakdown)
         ecom_channel_raw %>%
             filter(Date >= input$input_date[1] & Date <= input$input_date[2]) %>% 
             filter(Channel %in% input$channel_filter) %>%
+            filter(GalleryInvite %in% input$gallery_filter) %>%
             filter(Device %in% input$device_filter) %>%
             filter(UserType %in% input$user_filter) %>%
             group_by_("Date", input$breakdown) %>% 
@@ -218,6 +228,7 @@ server <- function(input, output) {
 
     # untrend channel data for full time frame plots
     untrended_data <- reactive({
+        req(input$breakdown)
         ecom_channel() %>%
         select(-Date) %>%
         group_by_(input$breakdown) %>%
@@ -231,8 +242,6 @@ server <- function(input, output) {
         collect() %>% 
         filter(event_action != "removefromcart") %>% # not useful in viewing the funnel
         mutate_at(vars(sessions, daily_users), as.numeric) %>% 
-        mutate(zero_val_product = as.character(zero_val_product)) %>%
-        mutate(zero_val_product = if_else(zero_val_product == 1, T, F)) %>%
         mutate(download = if_else(download == 1, T, F)) %>%
         mutate(event_action = factor(event_action, 
                                      levels = c("productdetails", "addtocart", "checkout - shipping address",
@@ -244,19 +253,28 @@ server <- function(input, output) {
                UserType = user_type,
                EventAction = event_action,
                EventLabel = event_label,
-               ZeroValProduct = zero_val_product,
+               GalleryInvite = gallery_invite,
                ContainsDownload = download,
                Sessions = sessions,
                DailyUsers = daily_users)
         
     # funnel data reactive
     funnel_data <- reactive({
+        
+        req(input$fun_input_date)
+        req(input$fun_channel_filter)
+        req(input$fun_device_filter)
+        req(input$fun_user_filter)
+        req(input$gallery_invite_filter)
+        req(input$contains_download_filter)
+        req(input$fun_elabel_filter)
+        
         funnel_data_raw %>% 
             filter(Date >= input$fun_input_date[1] & Date <= input$fun_input_date[2]) %>% 
             filter(Channel %in% input$fun_channel_filter) %>% 
             filter(Device %in% input$fun_device_filter) %>% 
             filter(UserType %in% input$fun_user_filter) %>% 
-            filter(ZeroValProduct %in% input$fun_zero_filter) %>% 
+            filter(GalleryInvite %in% input$gallery_invite_filter) %>% 
             filter(ContainsDownload %in% input$contains_download_filter) %>% 
             filter(EventLabel %in% input$fun_elabel_filter) %>% 
             group_by(EventAction) %>% 

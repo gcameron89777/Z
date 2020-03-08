@@ -10,6 +10,17 @@ output$channel_filter <- renderUI({
               )
 })
 
+output$gallery_filter <- renderUI({
+  gallery_options <- unique(ecom_channel_raw$GalleryInvite) %>% sort()
+  pickerInput(inputId = "gallery_filter",
+              label = "GalleryInvite",
+              choices = gallery_options,
+              selected = gallery_options,
+              multiple = T,
+              options = list(`actions-box` = T)
+  )
+})
+
 
 output$device_filter <- renderUI({
   device_options <- unique(ecom_channel_raw$Device) %>% sort()

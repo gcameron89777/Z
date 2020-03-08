@@ -36,12 +36,12 @@ output$fun_user_filter <- renderUI({
         )
 })
 
-output$fun_zero_filter <- renderUI({
-        zero_options <- unique(funnel_data_raw$ZeroValProduct) %>% sort()
-        pickerInput(inputId = "fun_zero_filter",
-                    label = "ZeroValueProduct",
-                    choices = zero_options,
-                    selected = zero_options,
+output$gallery_invite_filter <- renderUI({
+        gallery_options <- unique(funnel_data_raw$GalleryInvite) %>% sort()
+        pickerInput(inputId = "gallery_invite_filter",
+                    label = "GalleryInvite",
+                    choices = gallery_options,
+                    selected = gallery_options,
                     multiple = T,
                     options = list(`actions-box` = T)
         )
@@ -52,7 +52,7 @@ output$contains_download_filter <- renderUI({
         pickerInput(inputId = "contains_download_filter",
                     label = "ContainsDownload",
                     choices = dl_options,
-                    selected = dl_options,
+                    selected = FALSE,
                     multiple = T,
                     options = list(`actions-box` = T)
         )
@@ -63,7 +63,7 @@ output$fun_elabel_filter <- renderUI({
         pickerInput(inputId = "fun_elabel_filter",
                     label = "EventLabel",
                     choices = elabel_options,
-                    selected = elabel_options,
+                    selected = "regular",
                     multiple = T,
                     options = list(`actions-box` = T)
         )
