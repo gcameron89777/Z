@@ -168,7 +168,8 @@ ui <- dashboardPage(skin = "black",
                                                 inputId = "funnel_metrics",
                                                 "Metric:",
                                                 c("Sessions",
-                                                  "DailyUsers"))
+                                                  "DailyUsers"),
+                                                selected = "DailyUsers")
                                         ),
                                         box(width = 9,
                                             title = "Funnel",

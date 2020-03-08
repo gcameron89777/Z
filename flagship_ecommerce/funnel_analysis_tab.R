@@ -39,7 +39,7 @@ output$fun_user_filter <- renderUI({
 output$gallery_invite_filter <- renderUI({
         gallery_options <- unique(funnel_data_raw$GalleryInvite) %>% sort()
         pickerInput(inputId = "gallery_invite_filter",
-                    label = "GalleryInvite",
+                    label = HTML("GalleryInvite </br> (Sessions from invite link)"),
                     choices = gallery_options,
                     selected = gallery_options,
                     multiple = T,
@@ -50,7 +50,7 @@ output$gallery_invite_filter <- renderUI({
 output$contains_download_filter <- renderUI({
         dl_options <- unique(funnel_data_raw$ContainsDownload) %>% sort()
         pickerInput(inputId = "contains_download_filter",
-                    label = "ContainsDownload",
+                    label = HTML("ContainsDownload </br> (Downloads bypass shipping steps)"),
                     choices = dl_options,
                     selected = FALSE,
                     multiple = T,

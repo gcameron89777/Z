@@ -13,7 +13,7 @@ output$channel_filter <- renderUI({
 output$gallery_filter <- renderUI({
   gallery_options <- unique(ecom_channel_raw$GalleryInvite) %>% sort()
   pickerInput(inputId = "gallery_filter",
-              label = "GalleryInvite",
+              label = HTML("GalleryInvite </br> (Sessions from invite link)"),
               choices = gallery_options,
               selected = gallery_options,
               multiple = T,
