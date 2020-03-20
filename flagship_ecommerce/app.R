@@ -245,7 +245,7 @@ server <- function(input, output) {
         mutate_at(vars(sessions, daily_users), as.numeric) %>% 
         mutate(download = if_else(download == 1, T, F)) %>%
         mutate(event_action = factor(event_action, 
-                                     levels = c("productdetails", "addtocart", "checkout - shipping address",
+                                     levels = c("productdetails", "addtocart", "checkout - view cart", "checkout - view registration", "checkout - shipping address",
                                                 "checkout - shipping method", "checkout - payment", "transaction")
                                      )) %>%
         rename(Date = date,
