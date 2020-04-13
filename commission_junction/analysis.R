@@ -38,6 +38,7 @@ combined <- cj_data %>%
 
 
 
-  
+# write to csv
+write_csv(combined, "cj_combined.csv")
 
 

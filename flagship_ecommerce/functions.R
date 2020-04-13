@@ -13,7 +13,7 @@ metricTables <- function(df, dim, metric) {
     pivot_longer(cols = -c(Date, !! dim), names_to = 'Key', values_to = 'value') %>%
     pivot_wider(names_from = Date, values_from = value) %>%
     select(-Key) %>% 
-    replace(is.na(.), 0) 
+    replace(is.na(.), 0)
 }
 
 

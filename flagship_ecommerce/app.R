@@ -1,4 +1,5 @@
-# libraries and external files
+
+# libraries and external files ----
 library(tidyverse)
 library(dbplyr)
 library(odbc)
@@ -14,13 +15,14 @@ library(forcats)
 source("functions.R")
 
 
-
+# Start UI ----
 ui <- dashboardPage(skin = "black",
                     dashboardHeader(title = "Ecommerce Dashboard"),
                     dashboardSidebar(
                         sidebarMenu(
                             menuItem("Channel Analysis", tabName = "channel", icon = icon("dashboard")),
-                            menuItem("Funnel Analysis", icon = icon("th"), tabName = "funnel")
+                            menuItem("Funnel Analysis", icon = icon("th"), tabName = "funnel"),
+                            menuItem("Marketing Site Analysis", tabName = "marketing", icon = icon("dashboard"))
                         )
                     ),
                     dashboardBody(
@@ -31,7 +33,11 @@ ui <- dashboardPage(skin = "black",
                                 
                             ),
                         ),
+                        
+                        
                         tabItems(
+                            
+                            # Channel analysis tab ----
                             tabItem(tabName = "channel",
                                     
                                     # filters
@@ -145,6 +151,7 @@ ui <- dashboardPage(skin = "black",
                                     )
                             ),
                             
+                            # Funnel analysis tab ----
                             tabItem(tabName = "funnel",
                                     h2("Funnel Analysis"),
                                     fluidRow(
@@ -152,7 +159,7 @@ ui <- dashboardPage(skin = "black",
                                         # Filters
                                         box(width = 3,
                                             title = "Filters",
-                                            
+                                                
                                             # min date for funnel is 12/28/19 since only added custom metric for zero priced products on the 27th
                                             uiOutput("fun_date_range_filter"),
                                             uiOutput("fun_channel_filter"),
@@ -170,16 +177,69 @@ ui <- dashboardPage(skin = "black",
                                                 c("Sessions",
                                                   "DailyUsers"),
                                                 selected = "DailyUsers")
-                                        ),
+                                            ),
                                         box(width = 9,
                                             title = "Funnel",
-                                            plotOutput("funnel_plot")
-                                            )
+                                            plotOutput("funnel_plot"))
+                                        
                                         )
-                                    )
-                            )
-                        )
-                    )
+                                ),
+                            
+                        
+                            # Marketing site tab
+                            tabItem(tabName = "marketing",
+                                    h2("Marketing Site Analysis"),
+                                    fluidRow(
+                                        
+                                        # breakdown
+                                        box(width = 3,
+                                            title = "Set Breakdown: ",
+                                            checkboxGroupButtons(inputId = "mk_dims", label = "Select breakdown:",
+                                                                 choices = c("Source", "Medium", "Campaign", "Channel"),
+                                                                 selected = "Channel",
+                                                                 justified = T, status = "primary",
+                                                                 direction = "vertical"#,
+                                                                 #checkIcon = list(yes = icon("ok", lib = "glyphicon"), no = icon("remove", lib = "glyphicon"))
+                                                                 )
+                                        ),
+
+                                        # Filters
+                                        box(width = 3,
+                                            title = NULL,
+                                            uiOutput("mk_date_range_filter"),
+                                            uiOutput("mk_device_filter"),
+                                            uiOutput("mk_user_filter")),
+                                        box(width = 3,
+                                            title = NULL,
+                                            uiOutput("mk_source_filter"),
+                                            uiOutput("mk_medium_filter"),
+                                            uiOutput("mk_campaign_filter")),
+                                        box(width = 3,
+                                            title = NULL,
+                                            uiOutput("mk_channel_filter"))
+                                        ),
+                                    
+                                    # Marketing site metrics trend tabs
+                                    fluidRow(
+                                        tabBox(width = 12,
+                                               title = "Marketing Trends",
+                                               id = "marketing_tables",
+                                               tabPanel("Sessions",
+                                                        downloadButton('downloadMarketingSessions', 'Download Sessions'),
+                                                        DT::dataTableOutput("marketing_data_sessions_trend")),
+                                               tabPanel("NewSubscriptions",
+                                                        downloadButton('downloadMarketingSubscriptions', 'Download New Subscriptions'),
+                                                        DT::dataTableOutput("marketing_data_subscriptions_trend")),
+                                               tabPanel("SubscriptionRevenue",
+                                                        downloadButton('downloadMarketingSubscriptionRevenue', 'Download Subscription Revenue'),
+                                                        DT::dataTableOutput("marketing_data_revenue_trend"))
+                                               )
+                                       ) # end fluid row for trend tables                                
+                                    
+                                    ) # end marketing site tab
+                        ) # end tab items
+                        ) # end dashboard body 
+                    ) # end ui
 
 ### SERVER ###
 
@@ -211,11 +271,6 @@ server <- function(input, output) {
     
     ecom_channel <- reactive({
         req(input$input_date)
-        req(input$channel_filter)
-        req(input$gallery_filter)
-        req(input$device_filter)
-        req(input$user_filter)
-        req(input$breakdown)
         ecom_channel_raw %>%
             filter(Date >= input$input_date[1] & Date <= input$input_date[2]) %>% 
             filter(Channel %in% input$channel_filter) %>%
@@ -263,12 +318,6 @@ server <- function(input, output) {
     funnel_data <- reactive({
         
         req(input$fun_input_date)
-        req(input$fun_channel_filter)
-        req(input$fun_device_filter)
-        req(input$fun_user_filter)
-        req(input$gallery_invite_filter)
-        req(input$contains_download_filter)
-        req(input$fun_elabel_filter)
         
         funnel_data_raw %>% 
             filter(Date >= input$fun_input_date[1] & Date <= input$fun_input_date[2]) %>% 
@@ -283,11 +332,57 @@ server <- function(input, output) {
             ungroup()
     })
     
+    
+    # Marketing site data ----
+    marketing_data_raw <- con %>% 
+        tbl(in_schema("flagship_reporting", "subscription_marketing_dashboard")) %>% 
+        filter(device_category != 'na') %>% # very tiny single digit number don't know why not fighting this one
+        collect() %>% 
+        rename(Date = date,
+               Channel = channel_grouping,
+               Medium = medium,
+               Source = source,
+               Campaign = campaign,
+               Device = device_category,
+               UserType = user_type,
+               Sessions = sessions,
+               Bounces = bounces,
+               NewSubscriptions = new_subscriptions,
+               SubscriptionRevenue = transaction_revenue)
+    
+
+    marketing_data <- reactive({
+        
+        req(input$mk_user_filter)
+        
+        marketing_data_raw %>% 
+            filter(Date >= input$mk_date_range_filter[1] & Date <= input$mk_date_range_filter[2]) %>% 
+            filter(Channel %in% input$mk_channel_filter) %>%
+            filter(Source %in% input$mk_source_filter) %>%
+            filter(Medium %in% input$mk_medium_filter) %>%
+            filter(Campaign %in% input$mk_campaign_filter) %>%
+            filter(Device %in% input$mk_device_filter) %>%
+            filter(UserType %in% input$mk_user_filter) %>%
+            
+        group_by_at(vars(Date, input$mk_dims)) %>% 
+            
+        summarise(Sessions = sum(Sessions),
+                  Bounces = sum(Bounces),
+                  NewSubscriptions = sum(NewSubscriptions),
+                  SubscriptionRevenue = sum(SubscriptionRevenue)) %>% 
+        ungroup()
+    })
+        
+    
     # channel analysis tab
     source('channel_analysis_tab.R', local = T)
     
     # funnel analysis tab
     source('funnel_analysis_tab.R', local = T)
+    
+    # marketing site analysis tab
+    source('marketing_site_analysis_tab.R', local = T)
+    
     
 }
 
