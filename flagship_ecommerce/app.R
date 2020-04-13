@@ -13,6 +13,7 @@ library(scales)
 library(plogr)
 library(forcats)
 source("functions.R")
+filter <- dplyr::filter
 
 
 # Start UI ----
@@ -193,8 +194,8 @@ ui <- dashboardPage(skin = "black",
                                         
                                         # breakdown
                                         box(width = 3,
-                                            title = "Set Breakdown: ",
-                                            checkboxGroupButtons(inputId = "mk_dims", label = "Select breakdown:",
+                                            title = NULL,
+                                            checkboxGroupButtons(inputId = "mk_dims", label = "Select Breakdown:",
                                                                  choices = c("Source", "Medium", "Campaign", "Channel"),
                                                                  selected = "Channel",
                                                                  justified = T, status = "primary",
@@ -337,7 +338,6 @@ server <- function(input, output) {
     marketing_data_raw <- con %>% 
         tbl(in_schema("flagship_reporting", "subscription_marketing_dashboard")) %>% 
         filter(device_category != 'na') %>% # very tiny single digit number don't know why not fighting this one
-        collect() %>% 
         rename(Date = date,
                Channel = channel_grouping,
                Medium = medium,
@@ -348,28 +348,28 @@ server <- function(input, output) {
                Sessions = sessions,
                Bounces = bounces,
                NewSubscriptions = new_subscriptions,
-               SubscriptionRevenue = transaction_revenue)
+               SubscriptionRevenue = transaction_revenue) %>% 
+            collect()
     
 
+    
     marketing_data <- reactive({
-        
-        req(input$mk_user_filter)
-        
-        marketing_data_raw %>% 
-            filter(Date >= input$mk_date_range_filter[1] & Date <= input$mk_date_range_filter[2]) %>% 
+
+        req(input$mk_date_range_filter)
+
+        marketing_data_raw %>%
+            filter(Date >= input$mk_date_range_filter[1] & Date <= input$mk_date_range_filter[2]) %>%
             filter(Channel %in% input$mk_channel_filter) %>%
             filter(Source %in% input$mk_source_filter) %>%
             filter(Medium %in% input$mk_medium_filter) %>%
             filter(Campaign %in% input$mk_campaign_filter) %>%
             filter(Device %in% input$mk_device_filter) %>%
             filter(UserType %in% input$mk_user_filter) %>%
-            
-        group_by_at(vars(Date, input$mk_dims)) %>% 
-            
+        group_by_at(vars(Date, input$mk_dims)) %>%
         summarise(Sessions = sum(Sessions),
                   Bounces = sum(Bounces),
                   NewSubscriptions = sum(NewSubscriptions),
-                  SubscriptionRevenue = sum(SubscriptionRevenue)) %>% 
+                  SubscriptionRevenue = sum(SubscriptionRevenue)) %>%
         ungroup()
     })
         
@@ -382,7 +382,6 @@ server <- function(input, output) {
     
     # marketing site analysis tab
     source('marketing_site_analysis_tab.R', local = T)
-    
     
 }
 

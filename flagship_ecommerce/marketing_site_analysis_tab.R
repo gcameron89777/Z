@@ -23,6 +23,7 @@ output$mk_channel_filter <- renderUI({
   )
 })
 
+
 ## Source
 output$mk_source_filter <- renderUI({
   source_options <- unique(marketing_data_raw$Source) %>% sort()
@@ -36,7 +37,7 @@ output$mk_source_filter <- renderUI({
 })
 
 ## Medium
-output$mk_medium_filter <- renderUI({
+ output$mk_medium_filter <- renderUI({
   medium_options <- unique(marketing_data_raw$Medium) %>% sort()
   pickerInput(inputId = "mk_medium_filter",
               label = "Medium",
@@ -90,75 +91,78 @@ output$mk_user_filter <- renderUI({
 
 # Marketing analysis data wrangling ----
 marketing_data_base <- reactive({
-  marketing_data() %>% 
-  mutate(Date = ordered(format(Date, "%d-%b"), levels = format(sort(unique(Date)), "%d-%b"))) %>% 
-  group_by_at(vars(Date, input$mk_dims)) %>% 
-  summarise(Sessions = sum(Sessions), 
-            Bounces = sum(Bounces), 
+  marketing_data() %>%
+  mutate(Date = ordered(format(Date, "%d-%b"), levels = format(sort(unique(Date)), "%d-%b"))) %>%
+  group_by_at(vars(Date, input$mk_dims)) %>%
+  summarise(Sessions = sum(Sessions),
+            Bounces = sum(Bounces),
             NewSubscriptions = sum(NewSubscriptions),
-            SubscriptionRevenue = sum(SubscriptionRevenue)) %>% 
+            SubscriptionRevenue = sum(SubscriptionRevenue)) %>%
   pivot_longer(cols = -c(Date, input$mk_dims), names_to = 'Key', values_to = 'value')
 })
-  
+
 
 # Metric trend tables ----
 ## sessions
 marketing_data_sessions_trend <- reactive({
-  marketing_data_base() %>% 
-    filter(Key == "Sessions") %>% 
-    pivot_wider(names_from = Date, values_from = value) %>% 
-    select(-Key) %>% 
-    replace(is.na(.), 0) %>% 
-    ungroup() %>% 
-    add_column(Total = rowSums(select(., -input$mk_dims), na.rm = TRUE)) %>% 
-    select_at(vars(input$mk_dims, Total, everything())) %>% 
-    filter(Total > 0) %>%
-    arrange(desc(Total))
+  marketing_data_base() %>%
+    dplyr::filter(Key == "Sessions") %>%
+    pivot_wider(names_from = Date, values_from = value) %>%
+    select(-Key) %>%
+    replace(is.na(.), 0) %>%
+    ungroup() %>%
+    add_column(Total = rowSums(select(., -input$mk_dims), na.rm = TRUE)) %>%
+    select_at(vars(input$mk_dims, Total, everything())) %>%
+    dplyr::filter(Total > 0) %>%
+    arrange(desc(Total)) %>% 
+    mutate_at(vars(-input$mk_dims), scales::comma)
 })
 
 output$marketing_data_sessions_trend <- DT::renderDataTable(DT::datatable({
   marketing_data_sessions_trend()
-  }, options = list(dom = 't', bPaginate=FALSE, sScrollX="100%")))
+  }, options = list(bPaginate=T, sScrollX="100%")))
 output$download_marketing_data_sessions_trend <- downloadTable("downloadMarketingSessions", marketing_data_sessions_trend())
 
 
 ## NewSubscriptions
 marketing_data_subscriptions_trend <- reactive({
-  marketing_data_base() %>% 
-    filter(Key == "NewSubscriptions") %>% 
-    pivot_wider(names_from = Date, values_from = value) %>% 
-    select(-Key) %>% 
-    replace(is.na(.), 0) %>% 
-    ungroup() %>% 
-    add_column(Total = rowSums(select(., -input$mk_dims), na.rm = TRUE)) %>% 
-    select_at(vars(input$mk_dims, Total, everything())) %>% 
-    filter(Total > 0) %>% 
-    arrange(desc(Total))
+  marketing_data_base() %>%
+    dplyr::filter(Key == "NewSubscriptions") %>%
+    pivot_wider(names_from = Date, values_from = value) %>%
+    select(-Key) %>%
+    replace(is.na(.), 0) %>%
+    ungroup() %>%
+    add_column(Total = rowSums(select(., -input$mk_dims), na.rm = TRUE)) %>%
+    select_at(vars(input$mk_dims, Total, everything())) %>%
+    dplyr::filter(Total > 0) %>%
+    arrange(desc(Total)) %>% 
+    mutate_at(vars(-input$mk_dims), scales::comma)
 })
 
 output$marketing_data_subscriptions_trend <- DT::renderDataTable(DT::datatable({
   marketing_data_subscriptions_trend()
-}, options = list(dom = 't', bPaginate=FALSE, sScrollX="100%")))
+}, options = list(bPaginate=T, sScrollX="100%")))
 output$download_marketing_data_subscriptions_trend <- downloadTable("downloadMarketingSubscriptions", marketing_data_subscriptions_trend())
 
 
 ## SubscriptionRevenue
 marketing_data_revenue_trend <- reactive({
-  marketing_data_base() %>% 
-    filter(Key == "SubscriptionRevenue") %>% 
-    pivot_wider(names_from = Date, values_from = value) %>% 
-    select(-Key) %>% 
-    replace(is.na(.), 0) %>% 
-    ungroup() %>% 
-    add_column(Total = rowSums(select(., -input$mk_dims), na.rm = TRUE)) %>% 
-    select_at(vars(input$mk_dims, Total, everything())) %>% 
-    filter(Total > 0) %>% 
-    arrange(desc(Total))
+  marketing_data_base() %>%
+    dplyr::filter(Key == "SubscriptionRevenue") %>%
+    pivot_wider(names_from = Date, values_from = value) %>%
+    select(-Key) %>%
+    replace(is.na(.), 0) %>%
+    ungroup() %>%
+    add_column(Total = rowSums(select(., -input$mk_dims), na.rm = TRUE)) %>%
+    select_at(vars(input$mk_dims, Total, everything())) %>%
+    dplyr::filter(Total > 0) %>%
+    arrange(desc(Total)) %>% 
+    mutate_at(vars(-input$mk_dims), scales::dollar)
 })
 
 output$marketing_data_revenue_trend <- DT::renderDataTable(DT::datatable({
   marketing_data_revenue_trend()
-}, options = list(dom = 't', bPaginate=FALSE, sScrollX="100%")))
+}, options = list(bPaginate=T, sScrollX="100%")))
 output$download_marketing_data_revenue_trend <- downloadTable("downloadMarketingSubscriptionRevenue", marketing_data_revenue_trend())
 
 
