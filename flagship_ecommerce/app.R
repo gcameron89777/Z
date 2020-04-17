@@ -18,11 +18,11 @@ filter <- dplyr::filter
 
 # Start UI ----
 ui <- dashboardPage(skin = "black",
-                    dashboardHeader(title = "Ecommerce Dashboard"),
+                    dashboardHeader(title = "Flagship Dashboard"),
                     dashboardSidebar(
                         sidebarMenu(
-                            menuItem("Channel Analysis", tabName = "channel", icon = icon("dashboard")),
-                            menuItem("Funnel Analysis", icon = icon("th"), tabName = "funnel"),
+                            menuItem("Ecom Channel Analysis", tabName = "channel", icon = icon("dashboard")),
+                            menuItem("Ecom Funnel Analysis", icon = icon("th"), tabName = "funnel"),
                             menuItem("Marketing Site Analysis", tabName = "marketing", icon = icon("dashboard"))
                         )
                     ),
