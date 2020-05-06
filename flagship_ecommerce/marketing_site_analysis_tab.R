@@ -24,44 +24,6 @@ output$mk_channel_filter <- renderUI({
 })
 
 
-## Source
-output$mk_source_filter <- renderUI({
-  source_options <- unique(marketing_data_raw$Source) %>% sort()
-  pickerInput(inputId = "mk_source_filter",
-              label = "Source",
-              choices = source_options,
-              selected = source_options,
-              multiple = T,
-              options = list(`actions-box` = T)
-  )
-})
-
-## Medium
- output$mk_medium_filter <- renderUI({
-  medium_options <- unique(marketing_data_raw$Medium) %>% sort()
-  pickerInput(inputId = "mk_medium_filter",
-              label = "Medium",
-              choices = medium_options,
-              selected = medium_options,
-              multiple = T,
-              options = list(`actions-box` = T)
-  )
-})
-
-
-## Campaign
-output$mk_campaign_filter <- renderUI({
-  campaign_options <- unique(marketing_data_raw$Campaign) %>% sort()
-  pickerInput(inputId = "mk_campaign_filter",
-              label = "Campaign",
-              choices = campaign_options,
-              selected = campaign_options,
-              multiple = T,
-              options = list(`actions-box` = T)
-  )
-})
-
-
 ## Device
 output$mk_device_filter <- renderUI({
   device_options <- unique(marketing_data_raw$Device) %>% sort()
@@ -103,6 +65,24 @@ marketing_data_base <- reactive({
 
 
 # Metric trend tables ----
+## Apply t all DTs
+
+# apply the same options to all 3 DTs
+marketing_dt_options <- reactive({
+  list(pageLength=100, scrollX=T, autoWidth = T, 
+       dom='tlipr',
+       lengthMenu = c(10, 100, 1000, 10000),
+       deferRender = T, 
+       scrollY = 200, 
+       scrollX=T, 
+       autoWidth = T, 
+       scroller = T,
+       fixedColumns = list(leftColumns = length(input$mk_dims) + 1),
+       columnDefs = list(list(width = '150px', targets = 1:length(input$mk_dims)))
+       )
+  })
+
+
 ## sessions
 marketing_data_sessions_trend <- reactive({
   marketing_data_base() %>%
@@ -118,10 +98,11 @@ marketing_data_sessions_trend <- reactive({
     mutate_at(vars(-input$mk_dims), scales::comma)
 })
 
-output$marketing_data_sessions_trend <- DT::renderDataTable(DT::datatable({
-  marketing_data_sessions_trend()
-  }, options = list(bPaginate=T, sScrollX="100%")))
-output$download_marketing_data_sessions_trend <- downloadTable("downloadMarketingSessions", marketing_data_sessions_trend())
+output$marketing_data_sessions_trend <- DT::renderDataTable(DT::datatable(
+  {marketing_data_sessions_trend()}, 
+  filter = 'top', 
+  options = marketing_dt_options))
+output$AllSessionsDL <- downloadTable("download_sessions", marketing_data_sessions_trend())
 
 
 ## NewSubscriptions
@@ -139,10 +120,12 @@ marketing_data_subscriptions_trend <- reactive({
     mutate_at(vars(-input$mk_dims), scales::comma)
 })
 
-output$marketing_data_subscriptions_trend <- DT::renderDataTable(DT::datatable({
-  marketing_data_subscriptions_trend()
-}, options = list(bPaginate=T, sScrollX="100%")))
-output$download_marketing_data_subscriptions_trend <- downloadTable("downloadMarketingSubscriptions", marketing_data_subscriptions_trend())
+output$marketing_data_subscriptions_trend <- DT::renderDataTable(DT::datatable(
+  {marketing_data_subscriptions_trend()}, 
+  filter = 'top', 
+  extensions = c('Buttons', 'Scroller', 'FixedColumns'), 
+  options = marketing_dt_options))
+output$AllSubscriptionsDL <- downloadTable("download_subscriptions", marketing_data_subscriptions_trend())
 
 
 ## SubscriptionRevenue
@@ -160,10 +143,11 @@ marketing_data_revenue_trend <- reactive({
     mutate_at(vars(-input$mk_dims), scales::dollar)
 })
 
-output$marketing_data_revenue_trend <- DT::renderDataTable(DT::datatable({
-  marketing_data_revenue_trend()
-}, options = list(bPaginate=T, sScrollX="100%")))
-output$download_marketing_data_revenue_trend <- downloadTable("downloadMarketingSubscriptionRevenue", marketing_data_revenue_trend())
-
+output$marketing_data_revenue_trend <- DT::renderDataTable(DT::datatable(
+  {marketing_data_revenue_trend()}, 
+  filter = 'top', 
+  extensions = c('Buttons', 'Scroller', 'FixedColumns'), 
+  options = marketing_dt_options))
+output$AllRevenueDL <- downloadTable("download_revenue", marketing_data_revenue_trend())
 
 

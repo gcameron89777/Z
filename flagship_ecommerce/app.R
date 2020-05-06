@@ -199,25 +199,18 @@ ui <- dashboardPage(skin = "black",
                                                                  choices = c("Source", "Medium", "Campaign", "Channel"),
                                                                  selected = "Channel",
                                                                  justified = T, status = "primary",
-                                                                 direction = "vertical"#,
-                                                                 #checkIcon = list(yes = icon("ok", lib = "glyphicon"), no = icon("remove", lib = "glyphicon"))
-                                                                 )
+                                                                 direction = "vertical")
                                         ),
 
                                         # Filters
                                         box(width = 3,
                                             title = NULL,
                                             uiOutput("mk_date_range_filter"),
+                                            uiOutput("mk_channel_filter")),
+                                        box(width = 3,
+                                            title = NULL,
                                             uiOutput("mk_device_filter"),
-                                            uiOutput("mk_user_filter")),
-                                        box(width = 3,
-                                            title = NULL,
-                                            uiOutput("mk_source_filter"),
-                                            uiOutput("mk_medium_filter"),
-                                            uiOutput("mk_campaign_filter")),
-                                        box(width = 3,
-                                            title = NULL,
-                                            uiOutput("mk_channel_filter"))
+                                            uiOutput("mk_user_filter"))
                                         ),
                                     
                                     # Marketing site metrics trend tabs
@@ -226,13 +219,13 @@ ui <- dashboardPage(skin = "black",
                                                title = "Marketing Trends",
                                                id = "marketing_tables",
                                                tabPanel("Sessions",
-                                                        downloadButton('downloadMarketingSessions', 'Download Sessions'),
+                                                        downloadButton("AllSessionsDL","Download All Sessions"),
                                                         DT::dataTableOutput("marketing_data_sessions_trend")),
                                                tabPanel("NewSubscriptions",
-                                                        downloadButton('downloadMarketingSubscriptions', 'Download New Subscriptions'),
+                                                        downloadButton("AllSubscriptionsDL","Download All Subscriptions"),
                                                         DT::dataTableOutput("marketing_data_subscriptions_trend")),
                                                tabPanel("SubscriptionRevenue",
-                                                        downloadButton('downloadMarketingSubscriptionRevenue', 'Download Subscription Revenue'),
+                                                        downloadButton("AllRevenueDL","Download All Revenue"),
                                                         DT::dataTableOutput("marketing_data_revenue_trend"))
                                                )
                                        ) # end fluid row for trend tables                                
@@ -360,9 +353,9 @@ server <- function(input, output) {
         marketing_data_raw %>%
             filter(Date >= input$mk_date_range_filter[1] & Date <= input$mk_date_range_filter[2]) %>%
             filter(Channel %in% input$mk_channel_filter) %>%
-            filter(Source %in% input$mk_source_filter) %>%
-            filter(Medium %in% input$mk_medium_filter) %>%
-            filter(Campaign %in% input$mk_campaign_filter) %>%
+            # filter(Source %in% input$mk_source_filter) %>%
+            # filter(Medium %in% input$mk_medium_filter) %>%
+            # filter(Campaign %in% input$mk_campaign_filter) %>%
             filter(Device %in% input$mk_device_filter) %>%
             filter(UserType %in% input$mk_user_filter) %>%
         group_by_at(vars(Date, input$mk_dims)) %>%
