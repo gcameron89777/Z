@@ -85,29 +85,39 @@ marketing_dt_options <- reactive({
 
 ## sessions
 marketing_data_sessions_trend <- reactive({
-  marketing_data_base() %>%
+  
+  extable <- marketing_data_base() %>%
     dplyr::filter(Key == "Sessions") %>%
     pivot_wider(names_from = Date, values_from = value) %>%
     select(-Key) %>%
     replace(is.na(.), 0) %>%
     ungroup() %>%
-    add_column(Total = rowSums(select(., -input$mk_dims), na.rm = TRUE)) %>%
+    add_column(Total = rowSums(select(., -input$mk_dims), na.rm = T)) %>%
     select_at(vars(input$mk_dims, Total, everything())) %>%
     dplyr::filter(Total > 0) %>%
-    arrange(desc(Total)) %>% 
-    mutate_at(vars(-input$mk_dims), scales::comma)
+    arrange(desc(Total))
+  
+  if(length(input$mk_dims) > 0) {
+    csums <- colSums(select(extable, -input$mk_dims), na.rm = T)
+    table_top <- map_dfc(csums, ~.) %>% mutate(!! sym(head(input$mk_dims, 1)) := "Total")
+    union_all(table_top, extable) %>% select(names(extable)) %>% 
+      mutate_at(vars(-input$mk_dims), scales::comma)
+    } else {
+      extable 
+      }
 })
 
 output$marketing_data_sessions_trend <- DT::renderDataTable(DT::datatable(
   {marketing_data_sessions_trend()}, 
   filter = 'top', 
+  extensions = c('Scroller'),
   options = marketing_dt_options))
 output$AllSessionsDL <- downloadTable("download_sessions", marketing_data_sessions_trend())
 
 
 ## NewSubscriptions
 marketing_data_subscriptions_trend <- reactive({
-  marketing_data_base() %>%
+  extable <- marketing_data_base() %>%
     dplyr::filter(Key == "NewSubscriptions") %>%
     pivot_wider(names_from = Date, values_from = value) %>%
     select(-Key) %>%
@@ -116,21 +126,31 @@ marketing_data_subscriptions_trend <- reactive({
     add_column(Total = rowSums(select(., -input$mk_dims), na.rm = TRUE)) %>%
     select_at(vars(input$mk_dims, Total, everything())) %>%
     dplyr::filter(Total > 0) %>%
-    arrange(desc(Total)) %>% 
-    mutate_at(vars(-input$mk_dims), scales::comma)
+    arrange(desc(Total))
+  
+  if(length(input$mk_dims) > 0) {
+    csums <- colSums(select(extable, -input$mk_dims), na.rm = T)
+    table_top <- map_dfc(csums, ~.) %>% mutate(!! sym(head(input$mk_dims, 1)) := "Total")
+    union_all(table_top, extable) %>% select(names(extable)) %>% 
+      mutate_at(vars(-input$mk_dims), scales::comma)
+  } else {
+    extable 
+  }
+  
+  
 })
 
 output$marketing_data_subscriptions_trend <- DT::renderDataTable(DT::datatable(
   {marketing_data_subscriptions_trend()}, 
   filter = 'top', 
-  extensions = c('Buttons', 'Scroller', 'FixedColumns'), 
+  extensions = c('Scroller'), 
   options = marketing_dt_options))
 output$AllSubscriptionsDL <- downloadTable("download_subscriptions", marketing_data_subscriptions_trend())
 
 
 ## SubscriptionRevenue
 marketing_data_revenue_trend <- reactive({
-  marketing_data_base() %>%
+  extable <- marketing_data_base() %>%
     dplyr::filter(Key == "SubscriptionRevenue") %>%
     pivot_wider(names_from = Date, values_from = value) %>%
     select(-Key) %>%
@@ -139,14 +159,23 @@ marketing_data_revenue_trend <- reactive({
     add_column(Total = rowSums(select(., -input$mk_dims), na.rm = TRUE)) %>%
     select_at(vars(input$mk_dims, Total, everything())) %>%
     dplyr::filter(Total > 0) %>%
-    arrange(desc(Total)) %>% 
-    mutate_at(vars(-input$mk_dims), scales::dollar)
+    arrange(desc(Total))
+
+    if(length(input$mk_dims) > 0) {
+    csums <- colSums(select(extable, -input$mk_dims), na.rm = T)
+    table_top <- map_dfc(csums, ~.) %>% mutate(!! sym(head(input$mk_dims, 1)) := "Total")
+    union_all(table_top, extable) %>% select(names(extable)) %>% 
+      mutate_at(vars(-input$mk_dims), scales::dollar)
+  } else {
+    extable 
+  }
+  
 })
 
 output$marketing_data_revenue_trend <- DT::renderDataTable(DT::datatable(
   {marketing_data_revenue_trend()}, 
   filter = 'top', 
-  extensions = c('Buttons', 'Scroller', 'FixedColumns'), 
+  extensions = c('Scroller'), 
   options = marketing_dt_options))
 output$AllRevenueDL <- downloadTable("download_revenue", marketing_data_revenue_trend())
 
